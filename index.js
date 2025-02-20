@@ -1,9 +1,11 @@
+const dotenv = require("dotenv").config();
 const http = require("http");
 const express = require("express");
 const app = express();
 const morgan = require("morgan");
 const cors = require("cors");
-let data = require("./data");
+const Person = require("./models/person");
+// let data = require("./data");
 
 morgan.token("body", (getId = (req) => JSON.stringify(req.body)));
 
@@ -19,41 +21,23 @@ app.get("/", (req, res) => {
 });
 
 app.get("/api/persons", (req, res) => {
-  res.json(data);
+  Person.find({}).then((people) => {
+    res.json(people);
+  });
 });
 
 app.get("/api/persons/:id", (req, res) => {
   const id = req.params.id;
-  let entry = data.entries.find((entry) => {
-    return entry.id === id;
+  Person.findById(id).then((individual) => {
+    res.json(individual);
   });
-  //can also be written
-  //  let entry = data.entries.find((entry) => return entry.id === id;);
-  if (entry) {
-    res.json(entry);
-  } else {
-    res.statusMessage = "We don't have a resource with that ID";
-    res.status(404).end();
-  }
 });
 
-app.get("/info", (req, res) => {
-  const totalEntries = data.entries.length;
-  res.send(
-    `<p>PhoneBook has info for ${totalEntries} people</p> <p>${Date()}</p>`
-  );
-});
-
-function generateID() {
-  const id = Math.floor(Math.random() * (400 - 5) + 5);
-  return id.toString();
-}
-
-function nameExists(name, array) {
-  let nameCheck = array.filter((item) => item.name === name);
-  let result = nameCheck[0] ? true : false;
-  return result;
-}
+// function nameExists(name, array) {
+//   let nameCheck = array.filter((item) => item.name === name);
+//   let result = nameCheck[0] ? true : false;
+//   return result;
+// }
 
 app.post("/api/persons", (req, res) => {
   const body = req.body;
@@ -64,22 +48,20 @@ app.post("/api/persons", (req, res) => {
     //still add the entry even though we generated a status code
     return res.status(400).end();
   }
-  if (nameExists(body.name, data.entries)) {
-    res.statusMessage =
-      "This name exists please make a request with a new name";
-    return res.status(409).end();
-  }
-
-  const entry = {
-    id: generateID(),
+  const person = new Person({
     name: body.name,
     number: body.number,
-  };
+  });
 
-  const newList = data.entries.concat(entry);
-  data.entries = newList;
-  //or data.entries.concat(entry)
-  res.json(entry);
+  person.save().then((savedPerson) => {
+    res.json(savedPerson);
+  });
+
+  // if (nameExists(body.name, data.entries)) {
+  //   res.statusMessage =
+  //     "This name exists please make a request with a new name";
+  //   return res.status(409).end();
+  // }
 });
 
 app.delete("/api/persons/:id", (req, res) => {
